@@ -39,95 +39,110 @@ document.addEventListener("DOMContentLoaded",function(){
         });
     });
 
-    // let forgotPasswordForm = document.getElementById("forgot-password-form");
-    // forgotPasswordForm.addEventListener("submit", function(event) {
-    //     event.preventDefault();
+    let forgotPasswordForm = document.getElementById("forgot-password-form");
+    forgotPasswordForm.addEventListener("submit", function(event) {
+        event.preventDefault();
 
-    //     const email = document.getElementById("forgotEmail").value;
+        const email = document.getElementById("forgotEmail").value;
 
-    //     if (!email) {
-    //         alert("Please enter your email.");
-    //         return;
-    //     }
+        if (!email) {
+            alert("Please enter your email.");
+            return;
+        }
 
-    //     fetch("http://localhost:3000/api/v1/users/forget", {
-    //         method: "PUT",
-    //         headers: {
-    //             "Content-Type": "application/json"
-    //         },
-    //         body: JSON.stringify({ email })
-    //     })
-    //     .then(response => {
-    //         if (!response.ok) {
-    //             throw new Error(`Forgot password request failed with status: ${response.status}`);
-    //         }
-    //         return response.json();
-    //     })
-    //     .then(data => {
-    //         if (data.message && data.otp && data.user_id) {
-    //             alert(data.message); // "OTP has been sent to your email"
-    //             localStorage.setItem("resetEmail", email);
-    //             localStorage.setItem("resetUserId", data.user_id); // Store user_idk
-    //             const forgotModal = bootstrap.Modal.getInstance(document.getElementById("forgotPasswordModal"));
-    //             forgotModal.hide();
-    //             const resetModal = new bootstrap.Modal(document.getElementById("resetPasswordModal"));
-    //             resetModal.show();
-    //         } else {
-    //             alert("Error: " + (data.errors || "Email not registered"));
-    //         }
-    //     })
-    //     .catch(error => {
-    //         console.error("Error:", error.message);
-    //         alert(`Failed to send OTP: ${error.message}`);
-    //     });
-    // });
+        fetch("http://localhost:3000/api/v1/users/forgetPassword", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({user: { email: email }})
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Forgot password request failed with status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.message && data.otp && data.user_id) {
+                alert(data.message); // "OTP has been sent to your email"
+                localStorage.setItem("resetEmail", email);
+                localStorage.setItem("resetUserId", data.user_id); // Store user_idk
+                const forgotModal = bootstrap.Modal.getInstance(document.getElementById("forgotPasswordModal"));
+                forgotModal.hide();
+                const resetModal = new bootstrap.Modal(document.getElementById("resetPasswordModal"));
+                resetModal.show();
+            } else {
+                alert("Error: " + (data.errors));
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error.message);
+            alert(`Failed to send OTP: ${error.message}`);
+        });
+    });
 
     // Reset Password Form Submission
-    // let resetPasswordForm = document.getElementById("reset-password-form");
-    // resetPasswordForm.addEventListener("submit", function(event) {
-    //     event.preventDefault();
+    let resetPasswordForm = document.getElementById("reset-password-form");
+    resetPasswordForm.addEventListener("submit", function(event) {
+        event.preventDefault();
 
-    //     const otp = document.getElementById("resetOtp").value;
-    //     const newPassword = document.getElementById("newPassword").value;
-    //     const userId = localStorage.getItem("resetUserId");
+        const otp = document.getElementById("resetOtp").value;
+        const newPassword = document.getElementById("newPassword").value;
+        const userId = localStorage.getItem("resetUserId");
 
-    //     if (!otp || !newPassword) {
-    //         alert("Please enter both OTP and new password.");
-    //         return;
-    //     }
+        if (!otp || !newPassword) {
+            alert("Please enter both OTP and new password.");
+            return;
+        }
 
-    //     if (!userId) {
-    //         alert("User ID not found. Please request OTP again.");
-    //         return;
-    //     }
+        if (!userId) {
+            alert("User ID not found. Please request OTP again.");
+            return;
+        }
 
-    //     fetch(`http://localhost:3000/api/v1/users/reset/${userId}`, {
-    //         method: "PUT",
-    //         headers: {
-    //             "Content-Type": "application/json"
-    //         },
-    //         body: JSON.stringify({ otp, new_password: newPassword })
-    //     })
-    //     .then(response => {
-    //         if (!response.ok) {
-    //             throw new Error(`Reset password request failed with status: ${response.status}`);
-    //         }
-    //         return response.json();
-    //     })
-    //     .then(data => {
-    //         if (data.message === "Password successfully reset") {
-    //             alert("Password reset successful! Please log in with your new password.");
-    //             const resetModal = bootstrap.Modal.getInstance(document.getElementById("resetPasswordModal"));
-    //             resetModal.hide();
-    //             localStorage.removeItem("resetEmail");
-    //             localStorage.removeItem("resetUserId");
-    //         } else {
-    //             alert("Error: " + (data.message || "Invalid OTP or request"));
-    //         }
-    //     })
-    //     .catch(error => {
-    //         console.error("Error:", error.message);
-    //         alert(`Reset password failed: ${error.message}`);
-    //     });
-    // });
+        fetch(`http://localhost:3000/api/v1/users/resetPassword/${userId}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({user:{ otp: otp, new_password: newPassword }})
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Reset password request failed with status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.message === "Password updated successfully") {
+                alert("Password reset successful! Please log in with your new password.");
+                const resetModal = bootstrap.Modal.getInstance(document.getElementById("resetPasswordModal"));
+                resetModal.hide();
+                localStorage.removeItem("resetEmail");
+                localStorage.removeItem("resetUserId");
+            } else {
+                alert("Error: " + (data.message || "Invalid OTP or request"));
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error.message);
+            alert(`Reset password failed: ${error.message}`);
+        });
+    });
 });
+
+
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = input.nextElementSibling;
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        input.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+}

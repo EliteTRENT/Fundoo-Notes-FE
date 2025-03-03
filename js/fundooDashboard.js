@@ -1,6 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const noteInitialInput = document.getElementById("noteInitialInput");
     const noteTitleInput = document.getElementById("noteTitleInput");
     const noteInput = document.getElementById("noteInput");
+    const closeNoteButton = document.getElementById("closeNoteButton");
     const notesGrid = document.querySelector(".fundoo-dash-notes-grid");
     const modalNoteTitle = document.getElementById("modalNoteTitle");
     const modalNoteContent = document.getElementById("modalNoteContent");
@@ -10,13 +12,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const userEmail = localStorage.getItem("userEmail");
     const profileButton = document.getElementById("profileButton");
     const profileDropdown = document.getElementById("profileDropdown");
+    const hamburger = document.getElementById("hamburger");
+    const sidebar = document.getElementById("sidebar");
+    const mainContent = document.getElementById("mainContent");
+    const headerTitle = document.getElementById("headerTitle");
     let currentView = "notes";
-  
+    let allNotes = [];
+
     if (!jwtToken) {
         alert("You must be logged in to create and view notes.");
         return;
     }
-  
+
     if (userName) document.getElementById("profileName").textContent = `Hi, ${userName}`;
     if (userEmail) {
         document.getElementById("profileEmail").textContent = userEmail;
@@ -24,23 +31,20 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("profileButton").textContent = emailInitial;
         document.getElementById("profileAvatar").textContent = emailInitial;
     }
-  
+
     // Toggle dropdown on button click
     profileButton.addEventListener("click", function (event) {
         event.stopPropagation();
         profileDropdown.style.display = profileDropdown.style.display === "block" ? "none" : "block";
     });
-  
+
     // Hide dropdown when clicking outside
     document.addEventListener("click", function (event) {
         if (!profileDropdown.contains(event.target) && event.target !== profileButton) {
             profileDropdown.style.display = "none";
         }
     });
-  
-    // Fetch Notes on Page Load
-    fetchNotes();
-  
+
     // Logout
     document.getElementById("logoutButton").addEventListener("click", function () {
         localStorage.removeItem("jwtToken");
@@ -48,100 +52,170 @@ document.addEventListener("DOMContentLoaded", function () {
         localStorage.removeItem("userName");
         window.location.href = "../pages/fundooLogin.html";
     });
-  
+
     // Sidebar Navigation Event Listeners
-    document.getElementById("notesTab").addEventListener("click", () => switchView("notes"));
-    document.getElementById("archiveTab").addEventListener("click", () => switchView("archive"));
-    document.getElementById("trashTab").addEventListener("click", () => switchView("trash"));
-  
-    // Focus on search input when search icon is clicked
-    document.querySelector(".fundoo-dash-search i").addEventListener("click", function () {
-        document.getElementById("searchInput").focus();
+    const notesTab = document.getElementById("notesTab");
+    const archiveTab = document.getElementById("archiveTab");
+    const trashTab = document.getElementById("trashTab");
+
+    if (notesTab) notesTab.addEventListener("click", () => switchView("notes"));
+    if (archiveTab) archiveTab.addEventListener("click", () => switchView("archive"));
+    if (trashTab) trashTab.addEventListener("click", () => switchView("trash"));
+
+    // Hamburger Menu Toggle
+    if (hamburger && sidebar && mainContent) {
+        hamburger.addEventListener("click", function (event) {
+            event.stopPropagation();
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                sidebar.classList.toggle("expanded");
+                sidebar.classList.toggle("collapsed");
+                mainContent.classList.toggle("sidebar-expanded");
+            } else {
+                sidebar.classList.toggle("collapsed");
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile && !sidebar.contains(event.target) && !hamburger.contains(event.target) && sidebar.classList.contains("expanded")) {
+                sidebar.classList.remove("expanded");
+                sidebar.classList.add("collapsed");
+                mainContent.classList.remove("sidebar-expanded");
+            }
+        });
+
+        window.addEventListener("resize", function () {
+            const isMobile = window.innerWidth <= 768;
+            if (!isMobile && sidebar.classList.contains("expanded")) {
+                sidebar.classList.remove("expanded");
+                sidebar.classList.add("collapsed");
+                mainContent.classList.remove("sidebar-expanded");
+            }
+        });
+    }
+
+    // Note Creation Expansion
+    noteInitialInput.addEventListener("click", function () {
+        if (currentView === "notes") {
+            noteInitialInput.style.display = "none";
+            document.querySelector(".note-expanded").style.display = "block";
+            noteTitleInput.focus();
+        }
     });
-  
+
+    closeNoteButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        const title = noteTitleInput.value.trim();
+        const content = noteInput.value.trim();
+        if (title || content) saveNote(title, content);
+        noteTitleInput.value = "";
+        noteInput.value = "";
+        document.querySelector(".note-expanded").style.display = "none";
+        noteInitialInput.style.display = "block";
+    });
+
+    // Focus on search input when search icon is clicked
+    const searchIcon = document.querySelector(".fundoo-dash-search i");
+    if (searchIcon) {
+        searchIcon.addEventListener("click", function () {
+            document.getElementById("searchInput").focus();
+        });
+    }
+
+    function debounce(func, delay) {
+        let timeoutId;
+        return function (...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
     function switchView(view) {
         currentView = view;
-        fetchNotes();
-  
+        fetchNotesWithSearch();
+
         const createNoteSection = document.querySelector(".fundoo-dash-create-note");
         if (currentView === "notes") {
             createNoteSection.style.display = "block";
         } else {
             createNoteSection.style.display = "none";
         }
-  
+
         document.querySelectorAll(".fundoo-dash-sidebar li").forEach(tab => {
             tab.classList.remove("active");
         });
-  
-        document.getElementById(`${view}Tab`).classList.add("active");
-  
+
+        const tabElement = document.getElementById(`${view}Tab`);
+        if (tabElement) tabElement.classList.add("active");
+
+        headerTitle.textContent = view === "notes" ? "Fundoo" : view === "archive" ? "Archive" : "Bin";
         document.body.classList.remove("notes-active", "archive-active", "trash-active");
         document.body.classList.add(`${view}-active`);
-  
-        document.querySelector(".fundoo-dash-create-note").style.display = view === "notes" ? "block" : "none";
+
+        if (window.innerWidth <= 768) {
+            sidebar.classList.remove("expanded");
+            sidebar.classList.add("collapsed");
+            mainContent.classList.remove("sidebar-expanded");
+        }
     }
-  
-    // Save note on blur (title or content)
-    noteInput.addEventListener("blur", function () {
-        const title = noteTitleInput.value.trim();
-        const content = noteInput.value.trim();
-        if (title || content) saveNote(title, content);
-    });
-  
-    noteTitleInput.addEventListener("blur", function () {
-        const title = noteTitleInput.value.trim();
-        const content = noteInput.value.trim();
-        if (title || content) saveNote(title, content);
-    });
-  
-    function fetchNotes() {
+
+    function fetchNotesWithSearch() {
         fetch("http://localhost:3000/api/v1/notes/getNote", {
             method: "GET",
             headers: { "Authorization": `Bearer ${jwtToken}` }
         })
         .then(response => response.json())
         .then(data => {
-            console.log("API Response:", data);  
-    
-            // ✅ Ensure `data.notes` is always an array
             if (!data.notes || !Array.isArray(data.notes)) {
                 console.error("Invalid API response format:", data);
-                data.notes = []; // Force `notes` to be an empty array if undefined
+                data.notes = [];
             }
-    
-            notesGrid.innerHTML = ""; // Clear existing notes
-    
-            let added = false;
-            data.notes.forEach(note => {
-                console.log("Processing Note:", note);  
-    
-                if (note.isDeleted) {
-                    if (currentView === "trash") {
-                        addNoteToUI(note.id, note.title, note.content, note.color);
-                        added = true;
-                    }
-                } else if (note.isArchive) {
-                    if (currentView === "archive" && !note.isDeleted) {
-                        addNoteToUI(note.id, note.title, note.content, note.color);
-                        added = true;
-                    }
-                } else {
-                    if (currentView === "notes") {
-                        addNoteToUI(note.id, note.title, note.content, note.color);
-                        added = true;
-                    }
-                }
-            });
-    
-            if (!added) {
-                console.warn("No notes matched the current filter.");
-            }
+            allNotes = data.notes;
+            filterAndDisplayNotes(document.getElementById("searchInput").value.trim());
         })
-        .catch(error => console.error("Request Failed:", error));
+        .catch(error => console.error("Fetch Error:", error));
     }
-     
-  
+
+    function filterAndDisplayNotes(query) {
+        notesGrid.innerHTML = "";
+        const lowerQuery = query.toLowerCase();
+        let added = false;
+
+        allNotes.forEach(note => {
+            const title = (note.title || "").toLowerCase();
+            const content = (note.content || "").toLowerCase();
+            const matchesSearch = title.includes(lowerQuery) || content.includes(lowerQuery);
+
+            if (note.isDeleted && currentView === "trash" && matchesSearch) {
+                addNoteToUI(note.id, note.title, note.content, note.color);
+                added = true;
+            } else if (note.isArchive && !note.isDeleted && currentView === "archive" && matchesSearch) {
+                addNoteToUI(note.id, note.title, note.content, note.color);
+                added = true;
+            } else if (!note.isArchive && !note.isDeleted && currentView === "notes" && matchesSearch) {
+                addNoteToUI(note.id, note.title, note.content, note.color);
+                added = true;
+            }
+        });
+
+        if (!added) {
+            notesGrid.innerHTML = "<p>No matching notes found.</p>";
+        }
+    }
+
+    function handleSearch(query) {
+        filterAndDisplayNotes(query);
+    }
+
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+        const debouncedSearchHandler = debounce((e) => {
+            handleSearch(e.target.value.trim());
+        }, 500);
+        searchInput.addEventListener("input", debouncedSearchHandler);
+    }
+
     function saveNote(title, content) {
         fetch("http://localhost:3000/api/v1/notes", {
             method: "POST",
@@ -157,19 +231,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 addNoteToUI(data.note.id, data.note.title || "", data.note.content || "", data.note.color || "white");
                 noteTitleInput.value = "";
                 noteInput.value = "";
+                fetchNotesWithSearch();
             } else {
                 console.error("Error:", data.errors);
             }
         })
         .catch(error => console.error("Request Failed:", error));
     }
-  
+
     function addNoteToUI(id, title, content, colour = "white") {
         const noteDiv = document.createElement("div");
         noteDiv.classList.add("fundoo-dash-note");
         noteDiv.dataset.id = id;
         noteDiv.style.backgroundColor = colour;
-  
+
         let iconsHTML = "";
         if (currentView === "notes") {
             iconsHTML = `
@@ -190,13 +265,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 <i class="fas fa-palette colour-icon" title="Change Colour"></i>
             `;
         }
-  
+
         noteDiv.innerHTML = `
-            <h3>${title}</h3>
-            <p>${content}</p>
+            <h3>${title || ""}</h3>
+            <p>${content || ""}</p>
             <div class="note-icons">${iconsHTML}</div>
         `;
-  
+
         noteDiv.addEventListener("click", function (event) {
             if (event.target.classList.contains("archive-icon") || 
                 event.target.classList.contains("delete-icon") || 
@@ -204,16 +279,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 event.target.classList.contains("restore-icon") || 
                 event.target.classList.contains("delete-permanent-icon") || 
                 event.target.classList.contains("colour-icon")) return;
-  
-            // Set modal title, content, and color
+
             modalNoteTitle.value = noteDiv.querySelector("h3").textContent;
             modalNoteContent.value = noteDiv.querySelector("p").textContent;
             const noteColor = noteDiv.style.backgroundColor || "white";
             document.querySelector(".modal-content.fundoo-dash-note").style.backgroundColor = noteColor;
-  
+
             const modalIcons = document.querySelector(".modal-icons");
             modalIcons.innerHTML = "";
-  
+
             if (currentView === "notes") {
                 modalIcons.innerHTML = `
                     <i class="fas fa-box-archive archive-icon" title="Archive"></i>
@@ -238,14 +312,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     <i class="fas fa-trash-alt delete-permanent-icon" title="Delete Permanently"></i>
                     <i class="fas fa-palette colour-icon" title="Change Colour"></i>
                 `;
-                modalIcons.querySelector(".restore-icon").addEventListener("click", () => restoreNote(id).then(() => noteModal.hide()));
+                modalIcons.querySelector(".restore-icon").addEventListener("click", () => toggleTrash(id).then(() => noteModal.hide()));
                 modalIcons.querySelector(".delete-permanent-icon").addEventListener("click", () => deleteNote(id).then(() => noteModal.hide()));
                 modalIcons.querySelector(".colour-icon").addEventListener("click", () => openColourPicker(id, noteDiv));
             }
-  
+
             noteModal.show();
-  
-            // Update note only when modal is hidden
+
             noteModal._element.addEventListener('hidden.bs.modal', function () {
                 const updatedTitle = modalNoteTitle.value.trim();
                 const updatedContent = modalNoteContent.value.trim();
@@ -255,64 +328,63 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.querySelector(".modal-content.fundoo-dash-note").style.backgroundColor = "white";
             }, { once: true });
         });
-  
+
         if (currentView === "notes") {
-            noteDiv.querySelector(".archive-icon").addEventListener("click", () => toggleArchive(id));
-            noteDiv.querySelector(".delete-icon").addEventListener("click", () => toggleTrash(id));
-            noteDiv.querySelector(".colour-icon").addEventListener("click", () => openColourPicker(id, noteDiv));
+            const archiveIcon = noteDiv.querySelector(".archive-icon");
+            const deleteIcon = noteDiv.querySelector(".delete-icon");
+            const colourIcon = noteDiv.querySelector(".colour-icon");
+            if (archiveIcon) archiveIcon.addEventListener("click", () => toggleArchive(id));
+            if (deleteIcon) deleteIcon.addEventListener("click", () => toggleTrash(id));
+            if (colourIcon) colourIcon.addEventListener("click", () => openColourPicker(id, noteDiv));
         } else if (currentView === "archive") {
-            noteDiv.querySelector(".unarchive-icon").addEventListener("click", () => toggleArchive(id));
-            noteDiv.querySelector(".delete-icon").addEventListener("click", () => toggleTrash(id));
-            noteDiv.querySelector(".colour-icon").addEventListener("click", () => openColourPicker(id, noteDiv));
+            const unarchiveIcon = noteDiv.querySelector(".unarchive-icon");
+            const deleteIcon = noteDiv.querySelector(".delete-icon");
+            const colourIcon = noteDiv.querySelector(".colour-icon");
+            if (unarchiveIcon) unarchiveIcon.addEventListener("click", () => toggleArchive(id));
+            if (deleteIcon) deleteIcon.addEventListener("click", () => toggleTrash(id));
+            if (colourIcon) colourIcon.addEventListener("click", () => openColourPicker(id, noteDiv));
         } else if (currentView === "trash") {
-            noteDiv.querySelector(".restore-icon").addEventListener("click", () => toggleTrash(id));
-            noteDiv.querySelector(".delete-permanent-icon").addEventListener("click", () => deleteNote(id));
-            noteDiv.querySelector(".colour-icon").addEventListener("click", () => openColourPicker(id, noteDiv));
+            const restoreIcon = noteDiv.querySelector(".restore-icon");
+            const deletePermanentIcon = noteDiv.querySelector(".delete-permanent-icon");
+            const colourIcon = noteDiv.querySelector(".colour-icon");
+            if (restoreIcon) restoreIcon.addEventListener("click", () => toggleTrash(id));
+            if (deletePermanentIcon) deletePermanentIcon.addEventListener("click", () => deleteNote(id));
+            if (colourIcon) colourIcon.addEventListener("click", () => openColourPicker(id, noteDiv));
         }
-  
+
         notesGrid.prepend(noteDiv);
     }
-  
+
     function toggleArchive(id) {
-        fetch(`http://localhost:3000/api/v1/notes/archiveToggle/${id}`, {
+        return fetch(`http://localhost:3000/api/v1/notes/archiveToggle/${id}`, {
             method: "PUT",
             headers: { "Authorization": `Bearer ${jwtToken}` }
         })
         .then(response => response.json())
-        .then(() => {
-            fetchNotes(); 
-        })
+        .then(() => fetchNotesWithSearch())
         .catch(error => console.error("Error:", error));
     }
-  
+
     function toggleTrash(id) {
-        fetch(`http://localhost:3000/api/v1/notes/trashToggle/${id}`, {
+        return fetch(`http://localhost:3000/api/v1/notes/trashToggle/${id}`, {
             method: "PUT",
             headers: { "Authorization": `Bearer ${jwtToken}` }
         })
         .then(response => response.json())
-        .then(() => {
-            fetchNotes(); 
-        })
+        .then(() => fetchNotesWithSearch())
         .catch(error => console.error("Error:", error));
     }
-  
+
     function deleteNote(id) {
-        fetch(`http://localhost:3000/api/v1/notes/delete/${id}`, {
+        return fetch(`http://localhost:3000/api/v1/notes/delete/${id}`, {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${jwtToken}` }
         })
         .then(response => response.json())
-        .then(() => {
-            const noteDiv = document.getElementById(`note-${id}`);
-            if (noteDiv) {
-                noteDiv.remove();
-            }
-            fetchNotes(); 
-        })
+        .then(() => fetchNotesWithSearch())
         .catch(error => console.error("Error:", error));
     }
-  
+
     function updateNote(id, title, content, noteElement) {
         fetch(`http://localhost:3000/api/v1/notes/updateNote/${id}`, {
             method: "PUT",
@@ -329,14 +401,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 noteElement.querySelector("p").textContent = data.note.content || "";
                 modalNoteTitle.value = data.note.title || "";
                 modalNoteContent.value = data.note.content || "";
-                console.log("Note updated successfully:", data.note);
+                fetchNotesWithSearch();
             } else {
                 console.error("Error updating note:", data.errors);
             }
         })
         .catch(error => console.error("Request Failed:", error));
     }
-  
+
     function openColourPicker(noteId, noteElement) {
         const colorPicker = document.createElement("div");
         colorPicker.classList.add("color-picker-popup");
@@ -349,13 +421,13 @@ document.addEventListener("DOMContentLoaded", function () {
         colorPicker.style.display = "grid";
         colorPicker.style.gridTemplateColumns = "repeat(5, 30px)";
         colorPicker.style.gap = "5px";
-  
+
         const colors = [
             "#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb",
             "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8",
             "#e8eaed"
         ];
-  
+
         colors.forEach(color => {
             const colorCircle = document.createElement("div");
             colorCircle.style.width = "30px";
@@ -376,7 +448,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
             colorPicker.appendChild(colorCircle);
         });
-  
+
         const closeButton = document.createElement("div");
         closeButton.textContent = "×";
         closeButton.style.position = "absolute";
@@ -388,13 +460,13 @@ document.addEventListener("DOMContentLoaded", function () {
             document.body.removeChild(colorPicker);
         });
         colorPicker.appendChild(closeButton);
-  
+
         const rect = noteElement.getBoundingClientRect();
         colorPicker.style.top = `${rect.bottom + window.scrollY + 5}px`;
         colorPicker.style.left = `${rect.left + window.scrollX}px`;
-  
+
         document.body.appendChild(colorPicker);
-  
+
         document.addEventListener("click", function handleOutsideClick(event) {
             if (!colorPicker.contains(event.target) && event.target !== noteElement.querySelector(".colour-icon")) {
                 document.body.removeChild(colorPicker);
@@ -402,7 +474,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-  
+
     function updateNoteColour(noteId, colour, noteElement) {
         fetch(`http://localhost:3000/api/v1/notes/changeColor/${noteId}/${encodeURIComponent(colour)}`, {
             method: "PUT",
@@ -417,11 +489,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (noteModal._isShown) {
                     document.querySelector(".modal-content.fundoo-dash-note").style.backgroundColor = colour;
                 }
-                console.log(data.message);
+                fetchNotesWithSearch();
             } else {
                 console.error("Error:", data.errors);
             }
         })
         .catch(error => console.error("Request Failed:", error));
     }
-  });
+
+    // Initial fetch
+    fetchNotesWithSearch();
+});

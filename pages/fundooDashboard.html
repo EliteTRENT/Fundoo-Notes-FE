@@ -11,54 +11,72 @@
     <script defer src="../js/fundooDashboard.js"></script>
 </head>
 <body>
+    <!-- Full-width Header (moved from main content) -->
+    <header class="fundoo-dash-full-header">
+        <div class="fundoo-dash-header">
+            <i class="fas fa-bars menu-icon" id="hamburger"></i>
+            <div class="header-title-search">
+                <h2 class="fundoo-title" id="headerTitle">Fundoo</h2>
+                <div class="fundoo-dash-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search notes...">
+                </div>
+            </div>
+            <div class="fundoo-dash-profile">
+                <button class="fundoo-dash-profile-button" id="profileButton"></button>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div style="width: 40px; height: 40px; background-color: #ff9800; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: bold;" id="profileAvatar"></div>
+                    <p id="profileName">Hi, User Name</p>
+                    <p id="profileEmail">user@example.com</p>
+                    <hr>
+                    <button id="logoutButton" class="logout-btn">Logout</button>
+                </div>
+            </div>
+        </div>
+    </header>
 
     <div class="fundoo-dash-container">
-
         <!-- Sidebar -->
-        <div class="fundoo-dash-sidebar">
-            <h2>Fundoo</h2>
-            <nav>
+        <div class="fundoo-dash-sidebar" id="sidebar">
+            <nav class="sidebar-nav">
                 <ul>
-                    <li id="notesTab" data-view="notes" class="active"><i class="fas fa-sticky-note"></i> Notes</li>
-                    <li id="archiveTab" data-view="archive"><i class="fas fa-archive"></i> Archive</li>
-                    <li id="trashTab" data-view="trash"><i class="fas fa-trash"></i> Trash</li>
+                    <li id="notesTab" data-view="notes" class="active">
+                        <i class="fas fa-sticky-note"></i>
+                        <span class="nav-text">Notes</span>
+                    </li>
+                    <li id="archiveTab" data-view="archive">
+                        <i class="fas fa-archive"></i>
+                        <span class="nav-text">Archive</span>
+                    </li>
+                    <li id="trashTab" data-view="trash">
+                        <i class="fas fa-trash"></i>
+                        <span class="nav-text">Trash</span>
+                    </li>
                 </ul>
             </nav>
         </div>
         
         <!-- Main Content -->
-        <div class="fundoo-dash-main-content">
-
-            <header>
-                <div class="fundoo-dash-search">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Search notes...">
-                </div>
-                <div class="fundoo-dash-profile">
-                    <button class="fundoo-dash-profile-button" id="profileButton"></button>
-                    <div class="profile-dropdown" id="profileDropdown">
-                        <div style="width: 40px; height: 40px; background-color: #ff9800; border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; font-weight: bold;" id="profileAvatar"></div>
-                        <p id="profileName">Hi, User Name</p>
-                        <p id="profileEmail">user@example.com</p>
-                        <hr>
-                        <button id="logoutButton" class="logout-btn">Logout</button>
-                    </div>
-                </div>                           
-            </header>
-            
+        <div class="fundoo-dash-main-content" id="mainContent">
             <!-- Note Creation with Title -->
             <section class="fundoo-dash-create-note">
-                <input type="text" id="noteTitleInput" placeholder="Title">
-                <textarea id="noteInput" placeholder="Create a new note..."></textarea>
+                <div class="note-input-wrapper">
+                    <input type="text" id="noteInitialInput" placeholder="Take a note...">
+                    <div class="note-expanded" style="display: none;">
+                        <input type="text" id="noteTitleInput" placeholder="Title">
+                        <textarea id="noteInput" placeholder="Take a note..."></textarea>
+                        <div class="note-options">
+                            <button id="closeNoteButton" class="close-btn">Close</button>
+                        </div>
+                    </div>
+                </div>
             </section>
 
-            <!-- Notes Grid (Dynamically Updated) -->
+            <!-- Notes Grid -->
             <section class="fundoo-dash-notes-grid">
                 <!-- Notes will be added dynamically here -->
             </section>
-
         </div>
-
     </div>
 
     <!-- Modal for Editing Notes -->
@@ -75,6 +93,5 @@
             </div>
         </div>
     </div>
-
 </body>
 </html>
